@@ -1,14 +1,18 @@
 import numpy as np
 import random
+import time
 from Node import Node
 
 
 class Minimax:
-    def __init__(self, root, depth):
+    def __init__(self, root, visit_nodes):
         self.root = root
-        self.depth = depth
+        self.valid_moves = root.get_children()
+        self.depth = int(np.log(visit_nodes) / (np.log(len(self.valid_moves)) + 0.1))  # regularization in case there is one valid move
+        self.nodes_visited = 0
         
     def minimax(self, node, depth, maximizing_player, alpha, beta):
+        self.nodes_visited += 1
         valid_moves = node.get_children()
         
         if depth >= self.depth or (not valid_moves):
@@ -33,13 +37,12 @@ class Minimax:
     
     def make_move(self):
         # returns a child of the root with best score
-        valid_moves = self.root.get_children()
-        scores = dict(zip(valid_moves, [self.minimax(child, 0, False, - np.Inf, np.Inf) for child in valid_moves]))
+        start_time = time.time()
+        scores = dict(zip(self.valid_moves, [self.minimax(child, 0, False, - np.Inf, np.Inf) for child in self.valid_moves]))
         best_moves = [key for key in scores.keys() if scores[key] == max(scores.values())]
         
-        """for key in scores:
-            print(key.grid, key.count_windows(4, 1), key.count_windows(4, 2), key.evaluate())"""
-        
+        end_time = time.time()
+        print(f'time {end_time - start_time}, visited {self.nodes_visited} nodes')
         
         return random.choice(best_moves)
     

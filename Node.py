@@ -9,62 +9,217 @@ class Node:
         self.num_columns = num_columns
         self.inarow = inarow  # number of marks in a row to win the game
         self.my_mark = my_mark
+        self.found_lines = False
+        self.verticals = None
+        self.horizontals = None
+        self.positive_diagonals = None
+        self.negative_diagonals = None
         
-    def check_window(self, window, num_disc, piece):
-        return (window.count(piece) == num_disc and window.count(0) == self.inarow - num_disc)
+    def get_verticals(self):
+        # returns two lists of (r, c, m, n),
+        # where r, c are coordinates of top points of vertical potential lines,
+        # m is mark present in the potential line,
+        # n is number of marks in the potential line (other squares are empty)\
         
-    def count_windows(self, num_disc, piece):
-        num_windows = 0
+        self.verticals = []
         
-        # Horizontal
-        for row in range(self.num_rows):
-            for col in range(self.num_columns - self.inarow + 1):
-                window = list(self.grid[row, col:(col + self.inarow)])
-                if self.check_window(window, num_disc, piece):
-                    num_windows += 1
-                
-        # Vertical
         for col in range(self.num_columns):
-            for row in range(self.num_rows - self.inarow + 1):
-                window = list(self.grid[row:(row + self.inarow), col])
-                if self.check_window(window, num_disc, piece):
-                    num_windows += 1
+            num_ones = 0
+            num_twos = 0
+            for row in range(self.inarow):
+                if self.grid[row][col] == 1:
+                    num_ones += 1
+                if self.grid[row][col] == 2:
+                    num_twos += 1
                     
-        # Positive Diagonal
-        for row in range(self.num_rows - self.inarow + 1):
+            for row in range(self.num_rows - self.inarow + 1):
+                if num_ones == 0 and num_twos != 0:
+                    self.verticals.append((row, col, 2, num_twos))
+                if num_ones != 0 and num_twos == 0:
+                    self.verticals.append((row, col, 1, num_ones))
+                
+                if row + self.inarow < self.num_rows:
+                    if self.grid[row][col] == 1:
+                        num_ones -= 1
+                    if self.grid[row][col] == 2:
+                        num_twos -= 1
+                    
+                    if self.grid[row + self.inarow][col] == 1:
+                        num_ones += 1
+                    if self.grid[row + self.inarow][col] == 2:
+                        num_twos += 1
+            
+    def get_horizontals(self):
+        # returns two lists of (r, c, m, n),
+        # where r, c are coordinates of left points of horizontal potential lines,
+        # m is mark present in the potential line,
+        # n is number of marks in the potential line (other squares are empty)\
+        
+        self.horizontals = []
+        
+        for row in range(self.num_rows):
+            num_ones = 0
+            num_twos = 0
+            for col in range(self.inarow):
+                if self.grid[row][col] == 1:
+                    num_ones += 1
+                if self.grid[row][col] == 2:
+                    num_twos += 1
+                    
             for col in range(self.num_columns - self.inarow + 1):
-                window = list(self.grid[range(row, row + self.inarow), range(col, col + self.inarow)])
-                if self.check_window(window, num_disc, piece):
-                    num_windows += 1
+                if num_ones == 0 and num_twos != 0:
+                    self.horizontals.append((row, col, 2, num_twos))
+                if num_ones != 0 and num_twos == 0:
+                    self.horizontals.append((row, col, 1, num_ones))
+                
+                if col + self.inarow < self.num_columns:
+                    if self.grid[row][col] == 1:
+                        num_ones -= 1
+                    if self.grid[row][col] == 2:
+                        num_twos -= 1
+                    
+                    if self.grid[row][col + self.inarow] == 1:
+                        num_ones += 1
+                    if self.grid[row][col + self.inarow] == 2:
+                        num_twos += 1
+            
+    def get_positive_diagonals(self):
+        # returns two lists of (r, c, m, n),
+        # where r, c are coordinates of top-left points of diagonal potential lines,
+        # m is mark present in the potential line,
+        # n is number of marks in the potential line (other squares are empty)
         
-        #Negative Diagonal
-        for row in range(self.inarow - 1, self.num_rows):
-            for col in range(self.num_columns - self.inarow + 1):
-                window = list(self.grid[range(row, row - self.inarow, - 1), range(col, col + self.inarow)])
-                if self.check_window(window, num_disc, piece):
-                    num_windows += 1
+        self.positive_diagonals = []
+        diagonal_number = 0 - self.num_columns + self.inarow  # row - column
         
-        return num_windows
+        while diagonal_number <= self.num_rows - self.inarow - 0:
+            num_ones = 0
+            num_twos = 0
+            
+            init_row = 0
+            init_col = 0
+            if diagonal_number > 0:
+                init_row = diagonal_number
+            if diagonal_number < 0:
+                init_col = - diagonal_number
+            
+            for i in range(self.inarow):
+                if self.grid[init_row + i][init_col + i] == 1:
+                    num_ones += 1
+                if self.grid[init_row + i][init_col + i] == 2:
+                    num_twos += 1
+                    
+            if num_ones == 0 and num_twos != 0:
+                self.positive_diagonals.append((init_row, init_col, 2, num_twos))
+            if num_ones != 0 and num_twos == 0:
+                self.positive_diagonals.append((init_row, init_col, 1, num_ones))
+                    
+            i = 0
+            while init_row + i + self.inarow < self.num_rows and init_col + i + self.inarow < self.num_columns:
+                if self.grid[init_row + i][init_col + i] == 1:
+                    num_ones -= 1
+                if self.grid[init_row + i][init_col + i] == 2:
+                    num_twos -= 1
+
+                if self.grid[init_row + i + self.inarow][init_col + i + self.inarow] == 1:
+                    num_ones += 1
+                if self.grid[init_row + i + self.inarow][init_col + i + self.inarow] == 2:
+                    num_twos += 1
+                    
+                i += 1
+                
+                if num_ones == 0 and num_twos != 0:
+                    self.positive_diagonals.append((init_row + i, init_col + i, 2, num_twos))
+                if num_ones != 0 and num_twos == 0:
+                    self.positive_diagonals.append((init_row + i, init_col + i, 1, num_ones))
+                            
+            diagonal_number += 1
+                
+    def get_negative_diagonals(self):
+        # returns two lists of (r, c, m, n),
+        # where r, c are coordinates of top-right points of diagonal potential lines,
+        # m is mark present in the potential line,
+        # n is number of marks in the potential line (other squares are empty)
         
+        self.negative_diagonals = []
+        diagonal_number = self.inarow - 1  # row + column
+        
+        while diagonal_number <= self.num_rows - self.inarow + self.num_columns - 1:
+            num_ones = 0
+            num_twos = 0
+            
+            init_row = 0
+            init_col = self.num_columns - 1
+            if diagonal_number < self.num_columns - 1:
+                init_col = diagonal_number
+            if diagonal_number > self.num_columns - 1:
+                init_row = diagonal_number - self.num_columns + 1
+            
+            for i in range(self.inarow):
+                if self.grid[init_row + i][init_col - i] == 1:
+                    num_ones += 1
+                if self.grid[init_row + i][init_col - i] == 2:
+                    num_twos += 1
+                    
+            if num_ones == 0 and num_twos != 0:
+                self.negative_diagonals.append((init_row, init_col, 2, num_twos))
+            if num_ones != 0 and num_twos == 0:
+                self.negative_diagonals.append((init_row, init_col, 1, num_ones))
+                    
+            i = 0
+            while init_row + i + self.inarow < self.num_rows and init_col - i - self.inarow >= 0:
+                if self.grid[init_row + i][init_col - i] == 1:
+                    num_ones -= 1
+                if self.grid[init_row + i][init_col - i] == 2:
+                    num_twos -= 1
+
+                if self.grid[init_row + i + self.inarow][init_col - i - self.inarow] == 1:
+                    num_ones += 1
+                if self.grid[init_row + i + self.inarow][init_col - i - self.inarow] == 2:
+                    num_twos += 1
+                    
+                i += 1
+                
+                if num_ones == 0 and num_twos != 0:
+                    self.negative_diagonals.append((init_row + i, init_col - i, 2, num_twos))
+                if num_ones != 0 and num_twos == 0:
+                    self.negative_diagonals.append((init_row + i, init_col - i, 1, num_ones))
+                            
+            diagonal_number += 1
+        
+    def get_lines(self):
+        self.get_verticals()
+        self.get_horizontals()
+        self.get_positive_diagonals()
+        self.get_negative_diagonals()
+        self.found_lines = True
+                    
     def evaluate(self):
         A = 1000000
-        B = 2
-        C = 1
+        B = 4
+        C = 2
+        D = 1
         
-        num_twos = self.count_windows(2, self.my_mark)
-        num_threes = self.count_windows(3, self.my_mark)
-        num_fours = self.count_windows(4, self.my_mark)
+        if not self.found_lines:
+            self.get_lines()
+            
+        evaluation = 0.
         
-        num_twos_opp = self.count_windows(2, self.my_mark % 2 + 1)
-        num_threes_opp = self.count_windows(3, self.my_mark % 2 + 1)
-        num_fours_opp = self.count_windows(4, self.my_mark % 2 + 1)
+        for line in self.verticals + self.horizontals + self.positive_diagonals + self.negative_diagonals:
+            multiplier = 1
+            if line[2] != self.my_mark:
+                multiplier = -1
+                
+            if line[3] == 1:
+                evaluation += multiplier * D
+            if line[3] == 2:
+                evaluation += multiplier * C
+            if line[3] == 3:
+                evaluation += multiplier * B
+            if line[3] == self.inarow:
+                evaluation += multiplier * A
         
-        """print(self.grid)
-        print(num_twos, num_threes, num_fours)
-        print(num_twos_opp, num_threes_opp, num_fours_opp)
-        print(A * num_fours + B * num_threes + C * num_twos - C * num_twos_opp - B * num_threes_opp - A * num_fours_opp)"""
-        
-        return A * num_fours + B * num_threes + C * num_twos - C * num_twos_opp - B * num_threes_opp - A * num_fours_opp
+        return evaluation
     
     def get_children(self):
         if self.is_terminal():
@@ -84,41 +239,17 @@ class Node:
         
         return children
     
-    def is_terminal_window(self, window):
-        return window.count(1) == self.inarow or window.count(2) == self.inarow
-    
     def is_terminal(self):
         # Check for a tie
         if list(self.grid[0,:]).count(0)==0:
             return True
         
-        # Horizontal
-        for row in range(self.num_rows):
-            for col in range(self.num_columns - self.inarow + 1):
-                window = list(self.grid[row, col:(col + self.inarow)])
-                if self.is_terminal_window(window):
-                    return True
-                
-        # Vertical
-        for col in range(self.num_columns):
-            for row in range(self.num_rows - self.inarow + 1):
-                window = list(self.grid[row:(row + self.inarow), col])
-                if self.is_terminal_window(window):
-                    return True
+        if not self.found_lines:
+            self.get_lines()
                     
-        # Positive Diagonal
-        for row in range(self.num_rows - self.inarow + 1):
-            for col in range(self.num_columns - self.inarow + 1):
-                window = list(self.grid[range(row, row + self.inarow), range(col, col + self.inarow)])
-                if self.is_terminal_window(window):
-                    return True
-        
-        #Negative Diagonal
-        for row in range(self.inarow - 1, self.num_rows):
-            for col in range(self.num_columns - self.inarow + 1):
-                window = list(self.grid[range(row, row - self.inarow, - 1), range(col, col + self.inarow)])
-                if self.is_terminal_window(window):
-                    return True
+        for line in self.verticals + self.horizontals + self.positive_diagonals + self.negative_diagonals:
+            if line[3] == self.inarow:
+                return True
         
         return False
         
