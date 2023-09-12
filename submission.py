@@ -451,6 +451,13 @@ class Minimax:
     
     def make_move(self):
         # returns a child of the root with best score
+        
+        # HEURISTIC: if the board is empty, put the mark in the middle
+        if np.count_nonzero(self.root.grid) == 0:
+            next_grid = self.root.grid.copy()
+            next_grid[-1][self.root.num_columns // 2] = self.root.my_mark
+            return Node(next_grid, self.root.mark_to_move % 2 + 1, self.root.num_rows, self.root.num_columns, self.root.inarow, self.root.my_mark)
+        
         start_time = time.time()
         scores = dict(zip(self.valid_moves, [self.minimax(child, 0, False, - np.Inf, np.Inf) for child in self.valid_moves]))
         best_moves = [key for key in scores.keys() if scores[key] == max(scores.values())]
