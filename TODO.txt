@@ -1,3 +1,6 @@
-1. use bitboards
-2. eval function: consider how low are the missing squares w.r.t. highest piece in that column
-2. eval function: consider even/odd threats
+find out why agent acts different when submitted
+use different depths for different branches (mind even/odd)
+use bitboards
+eval function: consider how low are the missing squares w.r.t. highest piece in that column
+eval function: consider even/odd threats
+eval function: add bonus reward for moving side
