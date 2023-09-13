@@ -4,7 +4,7 @@ import time
 
 
 class Node:
-    def __init__(self, grid, mark_to_move, num_rows, num_columns, inarow, my_mark, 
+    def __init__(self, grid, mark_to_move, num_rows, num_columns, inarow, my_mark, parameters=[2, 4, 0.5, 1, 2, 1.5, 1.],
                  verticals=None, horizontals=None, positive_diagonals=None, negative_diagonals=None):
         self.grid = grid.copy()
         self.mark_to_move = mark_to_move  # mark of the player to move
@@ -12,6 +12,7 @@ class Node:
         self.num_columns = num_columns
         self.inarow = inarow  # number of marks in a row to win the game
         self.my_mark = my_mark
+        self.parameters = parameters  # coefificents for the evaluation function
         self.verticals = verticals
         self.horizontals = horizontals
         self.positive_diagonals = positive_diagonals
@@ -202,7 +203,7 @@ class Node:
                     
     def evaluate(self):
         # assuming self.inarow is 4
-        
+        """
         ones_reward = 1
         twos_reward = 2
         threes_reward = 4
@@ -211,6 +212,9 @@ class Node:
         vertical_threes_reward = 2
         large_row_reward = 1.5  # the lower the line is, the better
         intersection_reward = 1.  # if two lines intersect, it is a potential 'fork'
+        """
+        ones_reward = 1
+        twos_reward, threes_reward, vertical_ones_reward, vertical_twos_reward, vertical_threes_reward, large_row_reward, intersection_reward = self.parameters
         
         if not self.found_lines:
             self.get_lines()
@@ -418,12 +422,35 @@ class Node:
         return False
         
         
+        
 class Minimax:
-    def __init__(self, root, visit_nodes):
+    def __init__(self, root, visit_nodes, silent=False):
         self.root = root
         self.valid_moves = root.get_children()
         self.depth = int(np.log(visit_nodes) / (np.log(len(self.valid_moves)) + 0.1))  # regularization in case there is one valid move
         self.nodes_visited = 0
+        self.silent = silent
+        self.opening_book = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,2,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,1,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,1,2],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,1,0,1,2],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,2,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,2,1,0,1,2],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,2,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,2,0,0]
+        ]
+        self.opening_answers = [(5, 3), (3, 3), (2, 3), (1, 3), (5, 1), (4, 1), (5, 5), (5, 1), (5, 6), (5, 0), (4, 5), (4, 1), (3, 5), (3, 1), (4, 3), (4, 3), (3, 2), (3, 4)]
         
     def minimax(self, node, depth, maximizing_player, alpha, beta):
         self.nodes_visited += 1
@@ -451,27 +478,43 @@ class Minimax:
     
     def make_move(self):
         # returns a child of the root with best score
+        start_time = time.time()
         
-        # HEURISTIC: if the board is empty, put the mark in the middle
-        if np.count_nonzero(self.root.grid) == 0:
+        # check opening book
+        if list(self.root.grid.flatten()) in self.opening_book:
+            row, col = self.opening_answers[self.opening_book.index(list(self.root.grid.flatten()))]
             next_grid = self.root.grid.copy()
-            next_grid[-1][self.root.num_columns // 2] = self.root.my_mark
+            next_grid[row][col] = self.root.my_mark
             return Node(next_grid, self.root.mark_to_move % 2 + 1, self.root.num_rows, self.root.num_columns, self.root.inarow, self.root.my_mark)
         
         start_time = time.time()
-        scores = dict(zip(self.valid_moves, [self.minimax(child, 0, False, - np.Inf, np.Inf) for child in self.valid_moves]))
+        
+        scores = {}
+        for valid_move in self.valid_moves:
+            scores[valid_move] = self.minimax(valid_move, 0, False, - np.Inf, np.Inf)
+            now_time = time.time()
+            if now_time - start_time > 1.:  # we have less than 1 second left, make search less deep
+                self.depth -= 1
+            if now_time - start_time > 1.5:
+                break
+            
         best_moves = [key for key in scores.keys() if scores[key] == max(scores.values())]
         
-        end_time = time.time()
-        print(f'time {end_time - start_time}, visited {self.nodes_visited} nodes')
+        if not self.silent:
+            evaluation = max(scores.values())
+            if self.root.my_mark == 2:
+                evaluation = - evaluation
+            end_time = time.time()
+            print(f'time {end_time - start_time}, visited {self.nodes_visited} nodes, eval {evaluation}')
         
         return random.choice(best_moves)
 
 
 def my_agent(obs, config):
+    parameters = [2., 4., 2.93518357, 1., 2.58320125, 3.00020255, 3.23011953]    
     grid = np.asarray(obs.board).reshape(config.rows, config.columns)
-    root = Node(grid, obs.mark, config.rows, config.columns, config.inarow, obs.mark)
-    minimax = Minimax(root, 20000)
+    root = Node(grid, obs.mark, config.rows, config.columns, config.inarow, obs.mark, parameters)
+    minimax = Minimax(root, 50000, silent=True)
     
     next_node = minimax.make_move()
     difference = next_node.grid - grid

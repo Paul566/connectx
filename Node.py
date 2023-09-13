@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Node:
-    def __init__(self, grid, mark_to_move, num_rows, num_columns, inarow, my_mark, 
+    def __init__(self, grid, mark_to_move, num_rows, num_columns, inarow, my_mark, parameters=[2, 4, 0.5, 1, 2, 1.5, 1.],
                  verticals=None, horizontals=None, positive_diagonals=None, negative_diagonals=None):
         self.grid = grid.copy()
         self.mark_to_move = mark_to_move  # mark of the player to move
@@ -10,6 +10,7 @@ class Node:
         self.num_columns = num_columns
         self.inarow = inarow  # number of marks in a row to win the game
         self.my_mark = my_mark
+        self.parameters = parameters  # coefificents for the evaluation function
         self.verticals = verticals
         self.horizontals = horizontals
         self.positive_diagonals = positive_diagonals
@@ -200,7 +201,7 @@ class Node:
                     
     def evaluate(self):
         # assuming self.inarow is 4
-        
+        """
         ones_reward = 1
         twos_reward = 2
         threes_reward = 4
@@ -209,6 +210,9 @@ class Node:
         vertical_threes_reward = 2
         large_row_reward = 1.5  # the lower the line is, the better
         intersection_reward = 1.  # if two lines intersect, it is a potential 'fork'
+        """
+        ones_reward = 1
+        twos_reward, threes_reward, vertical_ones_reward, vertical_twos_reward, vertical_threes_reward, large_row_reward, intersection_reward = self.parameters
         
         if not self.found_lines:
             self.get_lines()
@@ -257,8 +261,10 @@ class Node:
                 if v[2] != h[2]:
                     continue
                     
-                if h[1] <= v[1] and h[1] + self.inarow > v[1] and v[0] <= h[0] and v[0] + self.inarow > h[0] and self.grid[h[0]][v[1]] == 0:
+                if h[1] <= v[1] and h[1] + self.inarow > v[1] and v[0] <= h[0] and v[0] + self.inarow > h[0]:
                     evaluation += multiplier * v[3] * h[3] * intersection_reward
+                    
+                    # print("v-h", v, h, multiplier * v[3] * h[3] * intersection_reward)
                     
             for pd in long_positive_diagonals:
                 if v[2] != pd[2]:
@@ -271,6 +277,8 @@ class Node:
                     intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow):
                     evaluation += multiplier * v[3] * pd[3] * intersection_reward
                     
+                    # print("v-pd", v, pd, multiplier * v[3] * pd[3] * intersection_reward)
+                    
             for nd in long_negative_diagonals:
                 if v[2] != nd[2]:
                     continue
@@ -281,6 +289,8 @@ class Node:
                 if (intersection_row >= v[0] and intersection_row < v[0] + self.inarow and 
                     intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
                     evaluation += multiplier * v[3] * nd[3] * intersection_reward
+                    
+                    # print("v-nd", v, nd, multiplier * v[3] * nd[3] * intersection_reward)
                     
         for h in long_horizontals:
             multiplier = 1
@@ -298,6 +308,8 @@ class Node:
                     intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow):
                     evaluation += multiplier * h[3] * pd[3] * intersection_reward
                     
+                    # print("h-pd", h, pd, multiplier * h[3] * pd[3] * intersection_reward)
+                    
             for nd in long_negative_diagonals:
                 if h[2] != nd[2]:
                     continue
@@ -308,6 +320,8 @@ class Node:
                 if (intersection_col >= h[1] and intersection_col < h[1] + self.inarow and 
                     intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
                     evaluation += multiplier * h[3] * nd[3] * intersection_reward
+                    
+                    # print("h-nd", h, nd, multiplier * h[3] * nd[3] * intersection_reward)
                     
         for pd in long_positive_diagonals:
             for nd in long_negative_diagonals:
@@ -326,6 +340,8 @@ class Node:
                 if (intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow and
                     intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
                     evaluation += multiplier * pd[3] * nd[3] * intersection_reward
+                    
+                    # print(pd, nd, multiplier * pd[3] * nd[3] * intersection_reward)
         
         return evaluation
     

@@ -11,6 +11,27 @@ class Minimax:
         self.depth = int(np.log(visit_nodes) / (np.log(len(self.valid_moves)) + 0.1))  # regularization in case there is one valid move
         self.nodes_visited = 0
         self.silent = silent
+        self.opening_book = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,2,0,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,1,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,1,2],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,1,0,1,2],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,2,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,2,1,0,1,2],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,1,0,0,0,0,0,2,1,0,1,2,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,2,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,2,0,0]
+        ]
+        self.opening_answers = [(5, 3), (3, 3), (2, 3), (1, 3), (5, 1), (4, 1), (5, 5), (5, 1), (5, 6), (5, 0), (4, 5), (4, 1), (3, 5), (3, 1), (4, 3), (4, 3), (3, 2), (3, 4)]
         
     def minimax(self, node, depth, maximizing_player, alpha, beta):
         self.nodes_visited += 1
@@ -38,15 +59,26 @@ class Minimax:
     
     def make_move(self):
         # returns a child of the root with best score
+        start_time = time.time()
         
-        # HEURISTIC: if the board is empty, put the mark in the middle
-        if np.count_nonzero(self.root.grid) == 0:
+        # check opening book
+        if list(self.root.grid.flatten()) in self.opening_book:
+            row, col = self.opening_answers[self.opening_book.index(list(self.root.grid.flatten()))]
             next_grid = self.root.grid.copy()
-            next_grid[-1][self.root.num_columns // 2] = self.root.my_mark
+            next_grid[row][col] = self.root.my_mark
             return Node(next_grid, self.root.mark_to_move % 2 + 1, self.root.num_rows, self.root.num_columns, self.root.inarow, self.root.my_mark)
         
         start_time = time.time()
-        scores = dict(zip(self.valid_moves, [self.minimax(child, 0, False, - np.Inf, np.Inf) for child in self.valid_moves]))
+        
+        scores = {}
+        for valid_move in self.valid_moves:
+            scores[valid_move] = self.minimax(valid_move, 0, False, - np.Inf, np.Inf)
+            now_time = time.time()
+            if now_time - start_time > 1.:  # we have less than 1 second left, make search less deep
+                self.depth -= 1
+            if now_time - start_time > 1.5:
+                break
+            
         best_moves = [key for key in scores.keys() if scores[key] == max(scores.values())]
         
         if not self.silent:
