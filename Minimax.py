@@ -71,22 +71,24 @@ class Minimax:
         start_time = time.time()
         
         scores = {}
+        depth_reduced = False
         for valid_move in self.valid_moves:
             scores[valid_move] = self.minimax(valid_move, 0, False, - np.Inf, np.Inf)
             now_time = time.time()
-            if now_time - start_time > 1.:  # we have less than 1 second left, make search less deep
-                self.depth -= 1
-            if now_time - start_time > 1.5:
-                break
+            if now_time - start_time > 1. and not depth_reduced:
+                self.depth -= 2
+                depth_reduced = True
             
         best_moves = [key for key in scores.keys() if scores[key] == max(scores.values())]
+        next_move = random.choice(best_moves)
         
         if not self.silent:
             evaluation = max(scores.values())
             if self.root.my_mark == 2:
                 evaluation = - evaluation
             end_time = time.time()
-            print(f'time {end_time - start_time}, visited {self.nodes_visited} nodes, eval {evaluation}')
+            print(f'time {end_time - start_time},\t visited {self.nodes_visited} nodes,\t eval {evaluation}')
+            print(f'next move: {next_move.grid}')
         
-        return random.choice(best_moves)
+        return next_move
     

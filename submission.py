@@ -263,8 +263,10 @@ class Node:
                 if v[2] != h[2]:
                     continue
                     
-                if h[1] <= v[1] and h[1] + self.inarow > v[1] and v[0] <= h[0] and v[0] + self.inarow > h[0] and self.grid[h[0]][v[1]] == 0:
+                if h[1] <= v[1] and h[1] + self.inarow > v[1] and v[0] <= h[0] and v[0] + self.inarow > h[0]:
                     evaluation += multiplier * v[3] * h[3] * intersection_reward
+                    
+                    # print("v-h", v, h, multiplier * v[3] * h[3] * intersection_reward)
                     
             for pd in long_positive_diagonals:
                 if v[2] != pd[2]:
@@ -277,6 +279,8 @@ class Node:
                     intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow):
                     evaluation += multiplier * v[3] * pd[3] * intersection_reward
                     
+                    # print("v-pd", v, pd, multiplier * v[3] * pd[3] * intersection_reward)
+                    
             for nd in long_negative_diagonals:
                 if v[2] != nd[2]:
                     continue
@@ -287,6 +291,8 @@ class Node:
                 if (intersection_row >= v[0] and intersection_row < v[0] + self.inarow and 
                     intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
                     evaluation += multiplier * v[3] * nd[3] * intersection_reward
+                    
+                    # print("v-nd", v, nd, multiplier * v[3] * nd[3] * intersection_reward)
                     
         for h in long_horizontals:
             multiplier = 1
@@ -304,6 +310,8 @@ class Node:
                     intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow):
                     evaluation += multiplier * h[3] * pd[3] * intersection_reward
                     
+                    # print("h-pd", h, pd, multiplier * h[3] * pd[3] * intersection_reward)
+                    
             for nd in long_negative_diagonals:
                 if h[2] != nd[2]:
                     continue
@@ -314,6 +322,8 @@ class Node:
                 if (intersection_col >= h[1] and intersection_col < h[1] + self.inarow and 
                     intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
                     evaluation += multiplier * h[3] * nd[3] * intersection_reward
+                    
+                    # print("h-nd", h, nd, multiplier * h[3] * nd[3] * intersection_reward)
                     
         for pd in long_positive_diagonals:
             for nd in long_negative_diagonals:
@@ -332,6 +342,8 @@ class Node:
                 if (intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow and
                     intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
                     evaluation += multiplier * pd[3] * nd[3] * intersection_reward
+                    
+                    # print(pd, nd, multiplier * pd[3] * nd[3] * intersection_reward)
         
         return evaluation
     
@@ -490,24 +502,26 @@ class Minimax:
         start_time = time.time()
         
         scores = {}
+        depth_reduced = False
         for valid_move in self.valid_moves:
             scores[valid_move] = self.minimax(valid_move, 0, False, - np.Inf, np.Inf)
             now_time = time.time()
-            if now_time - start_time > 1.:  # we have less than 1 second left, make search less deep
-                self.depth -= 1
-            if now_time - start_time > 1.5:
-                break
+            if now_time - start_time > 1. and not depth_reduced:
+                self.depth -= 2
+                depth_reduced = True
             
         best_moves = [key for key in scores.keys() if scores[key] == max(scores.values())]
+        next_move = random.choice(best_moves)
         
         if not self.silent:
             evaluation = max(scores.values())
             if self.root.my_mark == 2:
                 evaluation = - evaluation
             end_time = time.time()
-            print(f'time {end_time - start_time}, visited {self.nodes_visited} nodes, eval {evaluation}')
+            print(f'time {end_time - start_time},\t visited {self.nodes_visited} nodes,\t eval {evaluation}')
+            print(f'next move: {next_move.grid}')
         
-        return random.choice(best_moves)
+        return next_move
 
 
 def my_agent(obs, config):
