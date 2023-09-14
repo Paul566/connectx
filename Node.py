@@ -1,347 +1,46 @@
 import numpy as np
+from bitboard_utils import *
 
 
 class Node:
-    def __init__(self, grid, mark_to_move, num_rows, num_columns, inarow, my_mark, parameters=[2, 4, 0.5, 1, 2, 1.5, 1.],
-                 verticals=None, horizontals=None, positive_diagonals=None, negative_diagonals=None):
-        self.grid = grid.copy()
+    def __init__(self, bitboard_occupied, bitboard_black, mark_to_move, num_rows, num_columns, inarow, my_mark, all_masks,
+                lines_white=None, lines_black=None, evaluated_lines=False):
+        self.bitboard_occupied = bitboard_occupied
+        self.bitboard_black = bitboard_black
         self.mark_to_move = mark_to_move  # mark of the player to move
         self.num_rows = num_rows
         self.num_columns = num_columns
         self.inarow = inarow  # number of marks in a row to win the game
         self.my_mark = my_mark
-        self.parameters = parameters  # coefificents for the evaluation function
-        self.verticals = verticals
-        self.horizontals = horizontals
-        self.positive_diagonals = positive_diagonals
-        self.negative_diagonals = negative_diagonals
+        self.all_masks = all_masks  # botboard masks for self.inarow squares in a row
+        self.lines_white = lines_white  # lines_white[i] is the number of potential lines with i+1 white pieces, len(lines_white) is inarow
+        self.lines_black = lines_black
+        self.evaluated_lines = evaluated_lines
         
-        self.found_lines = True
-        if (self.verticals is None) or (self.horizontals is None) or (self.positive_diagonals is None) or (self.negative_diagonals is None):
-            self.found_lines = False
-        
-    def get_verticals(self):
-        # returns two lists of [r, c, m, n],
-        # where r, c are coordinates of top points of vertical potential lines,
-        # m is mark present in the potential line,
-        # n is number of marks in the potential line (other squares are empty)\
-        
-        self.verticals = []
-        
-        for col in range(self.num_columns):
-            num_ones = 0
-            num_twos = 0
-            for row in range(self.inarow):
-                if self.grid[row][col] == 1:
-                    num_ones += 1
-                if self.grid[row][col] == 2:
-                    num_twos += 1
-                    
-            for row in range(self.num_rows - self.inarow + 1):
-                if num_ones == 0 and num_twos != 0:
-                    self.verticals.append([row, col, 2, num_twos])
-                if num_ones != 0 and num_twos == 0:
-                    self.verticals.append([row, col, 1, num_ones])
-                
-                if row + self.inarow < self.num_rows:
-                    if self.grid[row][col] == 1:
-                        num_ones -= 1
-                    if self.grid[row][col] == 2:
-                        num_twos -= 1
-                    
-                    if self.grid[row + self.inarow][col] == 1:
-                        num_ones += 1
-                    if self.grid[row + self.inarow][col] == 2:
-                        num_twos += 1
-            
-    def get_horizontals(self):
-        # returns two lists of [r, c, m, n],
-        # where r, c are coordinates of left points of horizontal potential lines,
-        # m is mark present in the potential line,
-        # n is number of marks in the potential line (other squares are empty)\
-        
-        self.horizontals = []
-        
-        for row in range(self.num_rows):
-            num_ones = 0
-            num_twos = 0
-            for col in range(self.inarow):
-                if self.grid[row][col] == 1:
-                    num_ones += 1
-                if self.grid[row][col] == 2:
-                    num_twos += 1
-                    
-            for col in range(self.num_columns - self.inarow + 1):
-                if num_ones == 0 and num_twos != 0:
-                    self.horizontals.append([row, col, 2, num_twos])
-                if num_ones != 0 and num_twos == 0:
-                    self.horizontals.append([row, col, 1, num_ones])
-                
-                if col + self.inarow < self.num_columns:
-                    if self.grid[row][col] == 1:
-                        num_ones -= 1
-                    if self.grid[row][col] == 2:
-                        num_twos -= 1
-                    
-                    if self.grid[row][col + self.inarow] == 1:
-                        num_ones += 1
-                    if self.grid[row][col + self.inarow] == 2:
-                        num_twos += 1
-            
-    def get_positive_diagonals(self):
-        # returns two lists of [r, c, m, n],
-        # where r, c are coordinates of top-left points of diagonal potential lines,
-        # m is mark present in the potential line,
-        # n is number of marks in the potential line (other squares are empty)
-        
-        self.positive_diagonals = []
-        diagonal_number = 0 - self.num_columns + self.inarow  # row - column
-        
-        while diagonal_number <= self.num_rows - self.inarow - 0:
-            num_ones = 0
-            num_twos = 0
-            
-            init_row = 0
-            init_col = 0
-            if diagonal_number > 0:
-                init_row = diagonal_number
-            if diagonal_number < 0:
-                init_col = - diagonal_number
-            
-            for i in range(self.inarow):
-                if self.grid[init_row + i][init_col + i] == 1:
-                    num_ones += 1
-                if self.grid[init_row + i][init_col + i] == 2:
-                    num_twos += 1
-                    
-            if num_ones == 0 and num_twos != 0:
-                self.positive_diagonals.append([init_row, init_col, 2, num_twos])
-            if num_ones != 0 and num_twos == 0:
-                self.positive_diagonals.append([init_row, init_col, 1, num_ones])
-                    
-            i = 0
-            while init_row + i + self.inarow < self.num_rows and init_col + i + self.inarow < self.num_columns:
-                if self.grid[init_row + i][init_col + i] == 1:
-                    num_ones -= 1
-                if self.grid[init_row + i][init_col + i] == 2:
-                    num_twos -= 1
-
-                if self.grid[init_row + i + self.inarow][init_col + i + self.inarow] == 1:
-                    num_ones += 1
-                if self.grid[init_row + i + self.inarow][init_col + i + self.inarow] == 2:
-                    num_twos += 1
-                    
-                i += 1
-                
-                if num_ones == 0 and num_twos != 0:
-                    self.positive_diagonals.append([init_row + i, init_col + i, 2, num_twos])
-                if num_ones != 0 and num_twos == 0:
-                    self.positive_diagonals.append([init_row + i, init_col + i, 1, num_ones])
-                            
-            diagonal_number += 1
-                
-    def get_negative_diagonals(self):
-        # returns two lists of [r, c, m, n],
-        # where r, c are coordinates of top-right points of diagonal potential lines,
-        # m is mark present in the potential line,
-        # n is number of marks in the potential line (other squares are empty)
-        
-        self.negative_diagonals = []
-        diagonal_number = self.inarow - 1  # row + column
-        
-        while diagonal_number <= self.num_rows - self.inarow + self.num_columns - 1:
-            num_ones = 0
-            num_twos = 0
-            
-            init_row = 0
-            init_col = self.num_columns - 1
-            if diagonal_number < self.num_columns - 1:
-                init_col = diagonal_number
-            if diagonal_number > self.num_columns - 1:
-                init_row = diagonal_number - self.num_columns + 1
-            
-            for i in range(self.inarow):
-                if self.grid[init_row + i][init_col - i] == 1:
-                    num_ones += 1
-                if self.grid[init_row + i][init_col - i] == 2:
-                    num_twos += 1
-                    
-            if num_ones == 0 and num_twos != 0:
-                self.negative_diagonals.append([init_row, init_col, 2, num_twos])
-            if num_ones != 0 and num_twos == 0:
-                self.negative_diagonals.append([init_row, init_col, 1, num_ones])
-                    
-            i = 0
-            while init_row + i + self.inarow < self.num_rows and init_col - i - self.inarow >= 0:
-                if self.grid[init_row + i][init_col - i] == 1:
-                    num_ones -= 1
-                if self.grid[init_row + i][init_col - i] == 2:
-                    num_twos -= 1
-
-                if self.grid[init_row + i + self.inarow][init_col - i - self.inarow] == 1:
-                    num_ones += 1
-                if self.grid[init_row + i + self.inarow][init_col - i - self.inarow] == 2:
-                    num_twos += 1
-                    
-                i += 1
-                
-                if num_ones == 0 and num_twos != 0:
-                    self.negative_diagonals.append([init_row + i, init_col - i, 2, num_twos])
-                if num_ones != 0 and num_twos == 0:
-                    self.negative_diagonals.append([init_row + i, init_col - i, 1, num_ones])
-                            
-            diagonal_number += 1
-        
-    def get_lines(self):
-        self.get_verticals()
-        self.get_horizontals()
-        self.get_positive_diagonals()
-        self.get_negative_diagonals()
-        self.found_lines = True
+    def evaluate_lines(self):
+        self.lines_white, self.lines_black = count_lines(self.bitboard_occupied, self.bitboard_black, self.all_masks, self.inarow)
+        self.evaluated_lines = True
                     
     def evaluate(self):
         # assuming self.inarow is 4
-        """
+
         ones_reward = 1
-        twos_reward = 2
-        threes_reward = 4
-        vertical_ones_reward = 0.5  # vertical lines are easier to block
-        vertical_twos_reward = 1
-        vertical_threes_reward = 2
-        large_row_reward = 1.5  # the lower the line is, the better
-        intersection_reward = 1.  # if two lines intersect, it is a potential 'fork'
-        """
-        ones_reward = 1
-        twos_reward, threes_reward, vertical_ones_reward, vertical_twos_reward, vertical_threes_reward, large_row_reward, intersection_reward = self.parameters
+        twos_reward, threes_reward = 2, 5
         
-        if not self.found_lines:
-            self.get_lines()
-            
-        evaluation = 0.
+        if not self.evaluated_lines:
+            self.evaluate_lines()
         
-        for line in self.horizontals + self.positive_diagonals + self.negative_diagonals:
-            multiplier = 1
-            if line[2] != self.my_mark:
-                multiplier = -1
-                
-            if line[3] == 1:
-                evaluation += multiplier * ones_reward * (1. + large_row_reward * line[0] / self.num_rows)
-            if line[3] == 2:
-                evaluation += multiplier * twos_reward * (1. + large_row_reward * line[0] / self.num_rows)
-            if line[3] == 3:
-                evaluation += multiplier * threes_reward * (1. + large_row_reward * line[0] / self.num_rows)
-            if line[3] == self.inarow:
-                evaluation += multiplier * np.Inf
-                
-        for line in self.verticals:
-            multiplier = 1
-            if line[2] != self.my_mark:
-                multiplier = -1
-                
-            if line[3] == 1:
-                evaluation += multiplier * vertical_ones_reward
-            if line[3] == 2:
-                evaluation += multiplier * vertical_twos_reward
-            if line[3] == 3:
-                evaluation += multiplier * vertical_threes_reward
-            if line[3] == self.inarow:
-                evaluation += multiplier * np.Inf
-                
-        long_verticals = [x.copy() for x in self.verticals if x[3] >= 2]
-        long_horizontals = [x.copy() for x in self.horizontals if x[3] >= 2]
-        long_positive_diagonals = [x.copy() for x in self.positive_diagonals if x[3] >= 2]
-        long_negative_diagonals = [x.copy() for x in self.negative_diagonals if x[3] >= 2]
-                
-        for v in long_verticals:
-            multiplier = 1
-            if v[2] != self.my_mark:
-                multiplier = -1
-                    
-            for h in long_horizontals:
-                if v[2] != h[2]:
-                    continue
-                    
-                if h[1] <= v[1] and h[1] + self.inarow > v[1] and v[0] <= h[0] and v[0] + self.inarow > h[0]:
-                    evaluation += multiplier * v[3] * h[3] * intersection_reward
-                    
-                    # print("v-h", v, h, multiplier * v[3] * h[3] * intersection_reward)
-                    
-            for pd in long_positive_diagonals:
-                if v[2] != pd[2]:
-                    continue
-                    
-                intersection_row = pd[0] + v[1] - pd[1]
-                intersection_col = v[1]
-                    
-                if (intersection_row >= v[0] and intersection_row < v[0] + self.inarow and 
-                    intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow):
-                    evaluation += multiplier * v[3] * pd[3] * intersection_reward
-                    
-                    # print("v-pd", v, pd, multiplier * v[3] * pd[3] * intersection_reward)
-                    
-            for nd in long_negative_diagonals:
-                if v[2] != nd[2]:
-                    continue
-                    
-                intersection_row = nd[0] + nd[1] - v[1]
-                intersection_col = v[1]
-                    
-                if (intersection_row >= v[0] and intersection_row < v[0] + self.inarow and 
-                    intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
-                    evaluation += multiplier * v[3] * nd[3] * intersection_reward
-                    
-                    # print("v-nd", v, nd, multiplier * v[3] * nd[3] * intersection_reward)
-                    
-        for h in long_horizontals:
-            multiplier = 1
-            if h[2] != self.my_mark:
-                multiplier = -1
-                
-            for pd in long_positive_diagonals:
-                if h[2] != pd[2]:
-                    continue
-                
-                intersection_row = h[0]
-                intersection_col = pd[1] + h[0] - pd[0]
-                
-                if (intersection_col >= h[1] and intersection_col < h[1] + self.inarow and 
-                    intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow):
-                    evaluation += multiplier * h[3] * pd[3] * intersection_reward
-                    
-                    # print("h-pd", h, pd, multiplier * h[3] * pd[3] * intersection_reward)
-                    
-            for nd in long_negative_diagonals:
-                if h[2] != nd[2]:
-                    continue
-                
-                intersection_row = h[0]
-                intersection_col = nd[1] + nd[0] - h[0]
-                
-                if (intersection_col >= h[1] and intersection_col < h[1] + self.inarow and 
-                    intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
-                    evaluation += multiplier * h[3] * nd[3] * intersection_reward
-                    
-                    # print("h-nd", h, nd, multiplier * h[3] * nd[3] * intersection_reward)
-                    
-        for pd in long_positive_diagonals:
-            for nd in long_negative_diagonals:
-                if pd[2] != nd[2]:
-                    continue
-                multiplier = 1
-                if pd[2] != self.my_mark:
-                    multiplier = -1
-                    
-                if (nd[0] + nd[1] - pd[0] - pd[1]) % 2 != 0:
-                    continue
-                
-                intersection_row = pd[0] + (nd[0] + nd[1] - pd[0] - pd[1]) // 2
-                intersection_col = pd[1] + (nd[0] + nd[1] - pd[0] - pd[1]) // 2
-                
-                if (intersection_row >= pd[0] and intersection_row < pd[0] + self.inarow and
-                    intersection_row >= nd[0] and intersection_row < nd[0] + self.inarow):
-                    evaluation += multiplier * pd[3] * nd[3] * intersection_reward
-                    
-                    # print(pd, nd, multiplier * pd[3] * nd[3] * intersection_reward)
+        multiplier = 1 if self.my_mark == 2 else -1
+        
+        if self.lines_white[3]:
+            return multiplier * np.Inf
+        if self.lines_black[3]:
+            return - multiplier * np.Inf
+
+        evaluation = multiplier * (self.lines_white[0] * ones_reward + self.lines_white[1] * twos_reward + 
+                                   self.lines_white[2] * threes_reward - 
+                                   self.lines_black[0] * ones_reward - self.lines_black[1] * twos_reward - 
+                                   self.lines_black[2] * threes_reward)
         
         return evaluation
     
@@ -351,83 +50,29 @@ class Node:
         
         children = []
         for col in range(self.num_columns):
-            if self.grid[0][col] != 0:
+            if self.bitboard_occupied & (1 << col):
                 continue
                 
-            next_grid = self.grid.copy()
-            next_verticals = []
-            next_horizontals = []
-            next_positive_diagonals = []
-            next_negative_diagonals = []
-            
-            row = 0
-            for potential_row in range(self.num_rows - 1, - 1, - 1):
-                if next_grid[potential_row][col] == 0:
-                    next_grid[potential_row][col] = self.mark_to_move
-                    row = potential_row
-                    break
-                    
-            for v in self.verticals:
-                if v[0] <= row and v[0] + self.inarow > row and v[1] == col:
-                    if v[2] == self.mark_to_move:
-                        v_copy = v.copy()
-                        v_copy[3] += 1
-                        next_verticals.append(v_copy)
-                    else:
-                        continue
-                else:
-                    next_verticals.append(v.copy())
-                    
-            for h in self.horizontals:
-                if h[1] <= col and h[1] + self.inarow > col and h[0] == row:
-                    if h[2] == self.mark_to_move:
-                        h_copy = h.copy()
-                        h_copy[3] += 1
-                        next_horizontals.append(h_copy)
-                    else:
-                        continue
-                else:
-                    next_horizontals.append(h.copy())
-                    
-            for pd in self.positive_diagonals:
-                if pd[0] - pd[1] == row - col and pd[0] <= row and pd[0] + self.inarow > row:
-                    if pd[2] == self.mark_to_move:
-                        pd_copy = pd.copy()
-                        pd_copy[3] += 1
-                        next_positive_diagonals.append(pd_copy)
-                    else:
-                        continue
-                else:
-                    next_positive_diagonals.append(pd.copy())
+            position = col
+            while position + self.num_columns < self.num_rows * self.num_columns and not (self.bitboard_occupied & (1 << (position + self.num_columns))):
+                position += self.num_columns
                 
-            for nd in self.negative_diagonals:
-                if nd[0] + nd[1] == row + col and nd[0] <= row and nd[0] + self.inarow > row:
-                    if nd[2] == self.mark_to_move:
-                        nd_copy = nd.copy()
-                        nd_copy[3] += 1
-                        next_negative_diagonals.append(nd_copy)
-                    else:
-                        continue
-                else:
-                    next_negative_diagonals.append(nd.copy())
-            
-            children.append(Node(next_grid, self.mark_to_move % 2 + 1, self.num_rows, self.num_columns, self.inarow, self.my_mark,
-                                verticals=next_verticals, horizontals=next_horizontals, positive_diagonals=next_positive_diagonals,
-                                negative_diagonals=next_negative_diagonals))
+            next_bitboard_occupied = self.bitboard_occupied + (1 << position)
+            next_bitboard_black = self.bitboard_black
+            if self.mark_to_move == 2:
+                next_bitboard_black += (1 << position)
+                
+            children.append(Node(next_bitboard_occupied, next_bitboard_black, self.mark_to_move % 2 + 1, self.num_rows, self.num_columns, self.inarow, self.my_mark, self.all_masks))
         
         return children
     
     def is_terminal(self):
         # Check for a tie
-        if list(self.grid[0,:]).count(0)==0:
+        if board_is_filled(self.bitboard_occupied, self.num_rows, self.num_columns):
             return True
-        
-        if not self.found_lines:
-            self.get_lines()
                     
-        for line in self.verticals + self.horizontals + self.positive_diagonals + self.negative_diagonals:
-            if line[3] == self.inarow:
-                return True
-        
-        return False
+        if not self.evaluated_lines:
+            self.evaluate_lines()
+            
+        return (self.lines_white[-1] or self.lines_black[-1])
         

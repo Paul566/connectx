@@ -2,6 +2,7 @@ import numpy as np
 import random
 import time
 from Node import Node
+from bitboard_utils import *
 
 
 class Minimax:
@@ -61,12 +62,14 @@ class Minimax:
         # returns a child of the root with best score
         start_time = time.time()
         
+        """
         # check opening book
         if list(self.root.grid.flatten()) in self.opening_book:
             row, col = self.opening_answers[self.opening_book.index(list(self.root.grid.flatten()))]
             next_grid = self.root.grid.copy()
             next_grid[row][col] = self.root.my_mark
             return Node(next_grid, self.root.mark_to_move % 2 + 1, self.root.num_rows, self.root.num_columns, self.root.inarow, self.root.my_mark)
+        """
         
         start_time = time.time()
         
@@ -87,8 +90,8 @@ class Minimax:
             if self.root.my_mark == 2:
                 evaluation = - evaluation
             end_time = time.time()
-            print(f'time {end_time - start_time},\t visited {self.nodes_visited} nodes,\t eval {evaluation}')
-            print(f'next move: {next_move.grid}')
+            print(f'time {end_time - start_time},\teval {evaluation},\tvisited {self.nodes_visited} nodes,\tdepth {self.depth}')
+            print(f'next move:\n{bitboard_to_array(next_move.bitboard_occupied, next_move.bitboard_black, self.root.num_rows, self.root.num_columns)}')
         
         return next_move
     
