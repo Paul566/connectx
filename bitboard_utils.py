@@ -72,13 +72,12 @@ def count_lines(bitboard_occupied, bitboard_black, masks, inarow):
     
     bitboard_white = bitboard_occupied & (~ bitboard_black)
     
-    for mask in masks:
-        white_pieces = bin(bitboard_white & mask).count("1")
-        black_pieces = bin(bitboard_black & mask).count("1")
-            
-        if white_pieces and not black_pieces:
-            ans_white[white_pieces - 1] += 1
-        if black_pieces and not white_pieces:
-            ans_black[black_pieces - 1] += 1
+    white_windows = bitboard_white & masks
+    black_windows = bitboard_black & masks
+    
+    for ww in white_windows[(black_windows == 0) & (white_windows != 0)]:
+        ans_white[bin(ww).count("1") - 1] += 1
+    for bw in black_windows[(black_windows != 0) & (white_windows == 0)]:
+        ans_white[bin(bw).count("1") - 1] += 1
             
     return ans_white, ans_black
