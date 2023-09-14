@@ -62,22 +62,25 @@ def get_line_masks(num_rows, num_columns, inarow):
 
     return np.array(horizontal_masks), np.array(vertical_masks), np.array(positive_diagonal_masks), np.array(negative_diagonal_masks)
 
-def count_lines(bitboard_occupied, bitboard_black, masks, inarow):
-    # returns (ans_white, ans_black), ans_white[i] is the number of potential lines with i+1 pieces, len(ans_white) = inarow
-    
-    assert bin(masks[0]).count("1") == inarow
-    
-    ans_white = np.zeros(inarow)
-    ans_black = np.zeros(inarow)
+def get_active_masks(bitboard_occupied, bitboard_black, masks):
+    # returns (ans_white, ans_black), ans_white is the array of masks with some white pieces and no black pieces
+        
+    ans_white = []
+    ans_black = []
     
     bitboard_white = bitboard_occupied & (~ bitboard_black)
     
     white_windows = bitboard_white & masks
     black_windows = bitboard_black & masks
-    
-    for ww in white_windows[(black_windows == 0) & (white_windows != 0)]:
-        ans_white[bin(ww).count("1") - 1] += 1
-    for bw in black_windows[(black_windows != 0) & (white_windows == 0)]:
-        ans_white[bin(bw).count("1") - 1] += 1
             
-    return ans_white, ans_black
+    return masks[(black_windows == 0) & (white_windows != 0)], masks[(black_windows != 0) & (white_windows == 0)]
+
+def get_intersecting_masks(difference, num_rows, num_columns, all_masks):
+    """
+    difference: a bitboard with one 1
+    returns: all masks of length inarow that intersect difference
+    """
+    # TODO: optimize this
+    intersections = all_masks & difference
+    return all_masks[intersections != 0]
+    
